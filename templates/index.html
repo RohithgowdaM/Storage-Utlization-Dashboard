@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storage Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px;
+        }
+        .drive-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            margin: 10px;
+            padding: 15px;
+            width: 300px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .drive-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .drive-card h2 {
+            font-size: 18px;
+            margin: 0 0 10px;
+            color: #555;
+        }
+        .drive-card p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .drive-card a {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 12px;
+            background-color: #007BFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .drive-card a:hover {
+            background-color: #0056b3;
+        }
+        .alert {
+            background-color: #ffcccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Storage Utilization</h1>
+    <div class="container">
+        {% for drive in drives %}
+        <div class="drive-card {% if drive.percent > 85 %}alert{% endif %}">
+            <h2>{{ drive.mountpoint }}</h2>
+            <p><strong>Total:</strong> {{ drive.total // (1024**3) }} GB</p>
+            <p><strong>Used:</strong> {{ drive.used // (1024**3) }} GB</p>
+            <p><strong>Free:</strong> {{ drive.free // (1024**3) }} GB</p>
+            <p><strong>Usage:</strong> {{ drive.percent }}%</p>
+            <canvas id="chart-{{ loop.index }}"></canvas>
+            <script>
+                new Chart(document.getElementById('chart-{{ loop.index }}').getContext('2d'), {
+                    type: 'pie',
+                    data: {
+                        labels: ['Used', 'Free'],
+                        datasets: [{
+                            data: [{{ drive.used }}, {{ drive.free }}],
+                            backgroundColor: ['red', 'green']
+                        }]
+                    }
+                });
+            </script>
+            <a href="/directory?path={{ drive.mountpoint }}">View Details</a>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
