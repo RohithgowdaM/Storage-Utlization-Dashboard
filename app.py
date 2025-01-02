@@ -61,7 +61,7 @@ def get_directory_info(path, sort_by="size"):
                     directory_data['files'].append({
                         'name': entry.name,
                         'size': stats.st_size,
-                        'atime': stats.st_atime,
+                        'atime': getattr(stats, 'st_atime', None),
                         'mtime': stats.st_mtime,
                         'path': entry.path
                     })
@@ -69,7 +69,7 @@ def get_directory_info(path, sort_by="size"):
                     directory_data['directories'].append({
                         'name': entry.name,
                         'size': get_directory_size(entry.path),
-                        'atime': stats.st_atime,
+                        'atime': getattr(stats, 'st_atime', None),
                         'path': entry.path
                     })
             except Exception as e:
@@ -82,14 +82,14 @@ def get_directory_info(path, sort_by="size"):
         elif sort_by == "least":
             directory_data['files'].sort(key=lambda x: x['atime'])
             directory_data['directories'].sort(key=lambda x: x['atime'])
-        else:  
+        else:  # Default to sorting by size
             directory_data['files'].sort(key=lambda x: x['size'], reverse=True)
             directory_data['directories'].sort(key=lambda x: x['size'], reverse=True)
     except Exception as e:
         print(f"Error reading directory {path}: {e}")
     return directory_data
 
-def suggest_files_for_removal(path, threshold=85):
+def suggest_files_for_removal(path, threshold=5):
     """Suggest files for removal when drive is almost full."""
     drives = get_drive_info()
     suggestions = []
@@ -113,7 +113,6 @@ def directory_view():
         if not os.path.exists(path):
             return jsonify({"error": "Path does not exist"}), 404
         directory_data = get_directory_info(path, sort_by)
-        print(directory_data)
         suggestions = suggest_files_for_removal(path)
         return render_template("directory.html", directory=path, data=directory_data, suggestions=suggestions)
     except:
@@ -128,6 +127,19 @@ def api_directory_view():
         return jsonify({"error": "Path does not exist"}), 404
     directory_data = get_directory_info(path, sort_by)
     return jsonify(directory_data)
+
+@app.route("/api/remove_file", methods=["POST"])
+def remove_file():
+    """API to remove a file and recompute storage."""
+    file_path = request.json.get("file_path", "")
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File does not exist"}), 404
+    try:
+        os.remove(file_path)
+        drive_info = get_drive_info()
+        return jsonify({"success": True, "updated_drive_info": drive_info})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Run App
 if __name__ == "__main__":

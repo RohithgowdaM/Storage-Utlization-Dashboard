@@ -79,7 +79,32 @@
             font-size: 14px;
             color: #555;
         }
+        .remove-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+        .remove-btn:hover {
+            background-color: #c82333;
+        }
+        .chart-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .chart {
+            max-width: 500px;
+            margin: 0 auto;
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <header>
@@ -87,6 +112,11 @@
         <a href="/" class="back-link">Back to Drives</a>
     </header>
     <div class="container">
+        <div class="chart-container">
+            <h2>Size Distribution</h2>
+            <canvas id="sizeChart" class="chart"></canvas>
+        </div>
+
         <h2>Directory: {{ directory }}</h2>
 
         <h2>Directories</h2>
@@ -137,6 +167,7 @@
                 <li>
                     {{ suggestion.name }} - {{ suggestion.size // (1024**2) }} MB 
                     (Last Accessed: {{ suggestion.atime | datetimeformat }})
+                    <button class="remove-btn" onclick="removeFile('{{ suggestion.path }}')">Remove</button>
                 </li>
                 {% endfor %}
             </ul>
@@ -145,5 +176,69 @@
             {% endif %}
         </div>
     </div>
+
+    <script>
+        function removeFile(filePath) {
+            fetch("/api/remove_file", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ file_path: filePath }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("File removed successfully!");
+                        location.reload(); // Refresh to update the page
+                    } else {
+                        alert("Error: " + data.error);
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+        }
+
+        // Chart.js Setup for Size Distribution
+        const directoryLabels = [
+            {% for dir in data.directories %}
+                "{{ dir.name }}",
+            {% endfor %}
+            {% for file in data.files %}
+                "{{ file.name }}",
+            {% endfor %}
+        ];
+
+        const directorySizes = [
+            {% for dir in data.directories %}
+                {{ dir.size }},
+            {% endfor %}
+            {% for file in data.files %}
+                {{ file.size }},
+            {% endfor %}
+        ];
+
+        const ctx = document.getElementById('sizeChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: directoryLabels,
+                datasets: [{
+                    label: 'Size (Bytes)',
+                    data: directorySizes,
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                        '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html>
