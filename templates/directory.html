@@ -197,48 +197,84 @@
         }
 
         // Chart.js Setup for Size Distribution
-        const directoryLabels = [
-            {% for dir in data.directories %}
-                "{{ dir.name }}",
-            {% endfor %}
-            {% for file in data.files %}
-                "{{ file.name }}",
-            {% endfor %}
-        ];
-
-        const directorySizes = [
-            {% for dir in data.directories %}
-                {{ dir.size }},
-            {% endfor %}
-            {% for file in data.files %}
-                {{ file.size }},
-            {% endfor %}
-        ];
-
-        const ctx = document.getElementById('sizeChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: directoryLabels,
-                datasets: [{
-                    label: 'Size (Bytes)',
-                    data: directorySizes,
-                    backgroundColor: [
-                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-                        '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
-                    ],
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
+            // Prepare data for the pie chart
+            const items = [
+                {% for dir in data.directories %}
+                    { name: "{{ dir.name }}", size: {{ dir.size }} },
+                {% endfor %}
+                {% for file in data.files %}
+                    { name: "{{ file.name }}", size: {{ file.size }} },
+                {% endfor %}
+            ];
+        
+            // Sort items by size in descending order
+            items.sort((a, b) => b.size - a.size);
+        
+            // Extract top 5 items for the legend
+            const topItems = items.slice(0, 5);
+            const topLabels = topItems.map(item => item.name);
+            const topSizes = topItems.map(item => item.size);
+        
+            // Calculate the size of remaining items
+            const othersSize = items.slice(5).reduce((sum, item) => sum + item.size, 0);
+        
+            // Add "Others" to the legend if applicable
+            if (othersSize > 0) {
+                topLabels.push("Others");
+                topSizes.push(othersSize);
+            }
+        
+            // Full data for the chart
+            const fullLabels = items.map(item => item.name); // Show all items in the chart
+            const fullSizes = items.map(item => item.size);
+        
+            // Render the chart
+            const ctx = document.getElementById('sizeChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: fullLabels, // Full labels in the chart
+                    datasets: [{
+                        label: 'Size (Bytes)',
+                        data: fullSizes,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                            '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                generateLabels: function (chart) {
+                                    // Legend uses only top 5 items + "Others"
+                                    return topLabels.map((label, index) => ({
+                                        text: `${label} (${(topSizes[index] / 1024 / 1024).toFixed(2)} MB)`,
+                                        fillStyle: chart.data.datasets[0].backgroundColor[index],
+                                        hidden: false,
+                                        index: index,
+                                    }));
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    // Show full data in tooltips
+                                    const label = context.label || '';
+                                    const size = context.raw || 0;
+                                    return `${label}: ${(size / 1024 / 1024).toFixed(2)} MB`;
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        });
+            });
+        
     </script>
 </body>
 </html>
