@@ -4,6 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from datetime import datetime
 import psutil
+import webbrowser
+from waitress import serve 
 
 app = Flask(__name__)
 
@@ -183,4 +185,5 @@ def compress_files():
 
 # Run App
 if __name__ == "__main__":
-    app.run(debug=True)
+    webbrowser.open("http://127.0.0.1:5000")
+    serve(app, host="0.0.0.0", port=5000)
