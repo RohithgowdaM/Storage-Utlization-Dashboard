@@ -55,6 +55,10 @@ Ensure the following are installed:
 
 ---
 
+## RUN EXE FILE
+Download and run the file directly without any dependancies using app.exe file.
+
+---
 ## Project Structure
 
 ```
