@@ -89,7 +89,7 @@ def get_directory_info(path, sort_by="size"):
         print(f"Error reading directory {path}: {e}")
     return directory_data
 
-def suggest_files_for_removal(path, threshold=5):
+def suggest_files_for_removal(path, threshold=40):
     """Suggest files for removal when drive is almost full."""
     drives = get_drive_info()
     suggestions = []
@@ -140,6 +140,46 @@ def remove_file():
         return jsonify({"success": True, "updated_drive_info": drive_info})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/compress', methods=['POST'])
+def compress_files():
+    try:
+        data = request.get_json()
+        items = data.get('items', [])
+
+        if not items:
+            return jsonify({"success": False, "error": "No items selected for compression."})
+
+        # Determine the common parent directory
+        parent_dir = os.path.commonpath(items)
+
+        # Create a unique zip file name in the parent directory
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        zip_filename = f"compressed_{timestamp}.zip"
+        zip_filepath = os.path.join(parent_dir, zip_filename)
+
+        # Create the zip file
+        with zipfile.ZipFile(zip_filepath, 'w') as zipf:
+            for item in items:
+                if os.path.exists(item):
+                    if os.path.isfile(item):
+                        # Add file to the zip
+                        zipf.write(item, os.path.basename(item))
+                    elif os.path.isdir(item):
+                        # Add directory recursively to the zip
+                        for root, dirs, files in os.walk(item):
+                            for file in files:
+                                file_path = os.path.join(root, file)
+                                arcname = os.path.relpath(file_path, parent_dir)  # Preserve directory structure
+                                zipf.write(file_path, arcname)
+                else:
+                    return jsonify({"success": False, "error": f"Item '{item}' does not exist."})
+
+        return jsonify({"success": True, "message": f"Files compressed and saved as {zip_filepath}"})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 
 # Run App
 if __name__ == "__main__":
